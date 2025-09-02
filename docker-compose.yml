@@ -1,0 +1,91 @@
+# Airflow + Postgres (LocalExecutor)
+# Requer .env com:
+# AIRFLOW_FERNET_KEY=kk66Dxuf_x7Kfohv9Zbm7Ba2xHALwmDBfANthtIXm7nc=
+# AIRFLOW_SECRET_KEY=<a-chave-que-você-gerou>
+# (sem aspas e com quebra de linha ao final)
+
+services:
+  postgres:
+    image: postgres:15
+    container_name: case-postgres
+    environment:
+      POSTGRES_USER: airflow
+      POSTGRES_PASSWORD: airflow
+      POSTGRES_DB: airflow
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U airflow -d airflow"]
+      interval: 5s
+      retries: 5
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    restart: unless-stopped
+
+  airflow-init:
+    image: apache/airflow:2.10.1
+    container_name: case-airflow-init
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      AIRFLOW__CORE__EXECUTOR: LocalExecutor
+      AIRFLOW__CORE__LOAD_EXAMPLES: "false"
+      AIRFLOW__CORE__FERNET_KEY: ${AIRFLOW_FERNET_KEY}
+      AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: postgresql+psycopg2://airflow:airflow@postgres/airflow
+      PYTHONPATH: /opt/airflow
+      _PIP_ADDITIONAL_REQUIREMENTS: -r /opt/airflow/requirements.txt
+    volumes:
+      - ./dags:/opt/airflow/dags
+      - ./src:/opt/airflow/src
+      - ./data:/opt/airflow/data
+      - ./requirements.txt:/opt/airflow/requirements.txt
+    command: >
+      bash -lc "airflow db migrate &&
+                airflow users create -u admin -p admin -r Admin -e admin@example.com -f Admin -l User || true"
+
+  airflow-webserver:
+    image: apache/airflow:2.10.1
+    container_name: case-airflow-webserver
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      AIRFLOW__CORE__EXECUTOR: LocalExecutor
+      AIRFLOW__CORE__LOAD_EXAMPLES: "false"
+      AIRFLOW__CORE__FERNET_KEY: ${AIRFLOW_FERNET_KEY}
+      AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: postgresql+psycopg2://airflow:airflow@postgres/airflow
+      AIRFLOW__WEBSERVER__SECRET_KEY: ${AIRFLOW_SECRET_KEY}   # <- ADICIONADO AQUI
+      PYTHONPATH: /opt/airflow
+      _PIP_ADDITIONAL_REQUIREMENTS: -r /opt/airflow/requirements.txt
+    command: webserver
+    ports:
+      - "8080:8080"
+    volumes:
+      - ./dags:/opt/airflow/dags
+      - ./src:/opt/airflow/src
+      - ./data:/opt/airflow/data
+      - ./requirements.txt:/opt/airflow/requirements.txt
+    restart: unless-stopped
+
+  airflow-scheduler:
+    image: apache/airflow:2.10.1
+    container_name: case-airflow-scheduler
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      AIRFLOW__CORE__EXECUTOR: LocalExecutor
+      AIRFLOW__CORE__FERNET_KEY: ${AIRFLOW_FERNET_KEY}
+      AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: postgresql+psycopg2://airflow:airflow@postgres/airflow
+      AIRFLOW__WEBSERVER__SECRET_KEY: ${AIRFLOW_SECRET_KEY}
+      PYTHONPATH: /opt/airflow
+      _PIP_ADDITIONAL_REQUIREMENTS: -r /opt/airflow/requirements.txt
+    command: scheduler
+    volumes:
+      - ./dags:/opt/airflow/dags
+      - ./src:/opt/airflow/src
+      - ./data:/opt/airflow/data
+      - ./requirements.txt:/opt/airflow/requirements.txt
+    restart: unless-stopped
+
+volumes:
+  pgdata:
