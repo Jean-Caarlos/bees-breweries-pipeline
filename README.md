@@ -206,8 +206,18 @@ docker compose ps
 docker compose logs -f airflow-scheduler
 
 # clear old runs
+
 docker compose exec airflow-webserver airflow tasks clear -y bees_breweries
 
 # backfill a range
 docker compose exec airflow-webserver \
   airflow dags backfill bees_breweries -s 2025-08-25 -e 2025-09-01
+
+
+# Prints de tela:    
+airflow:
+- DAG success - <img width="1890" height="841" alt="image" src="https://github.com/user-attachments/assets/181906d8-76c0-4605-95d2-c19c2cc68e6b" />
+- DAG graph - <img width="1899" height="916" alt="image" src="https://github.com/user-attachments/assets/7524079a-44c6-4b03-844c-d6876e65ad4d" />
+- DAG - <img width="1906" height="454" alt="image" src="https://github.com/user-attachments/assets/cd83cc99-0f5a-4d85-8a47-75ae095f1baa" />
+
+VSCODE - <img width="1327" height="1020" alt="image" src="https://github.com/user-attachments/assets/d8fe2fdf-3ca8-4907-970e-70b00d71e633" />
